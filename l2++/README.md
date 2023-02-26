@@ -1,9 +1,4 @@
----
-header-includes:
- - \usepackage{fvextra}
- - \usepackage{amsmath}
- - \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
----
+
 ### L2++ Syntax
 Booleans $b \in \mathbb{B} = \{\mathbf{true}, \mathbf{false}\}$\
 Integers $n \in \mathbb{N} = \{\dots, -1, 0, 1, \dots\}$\
