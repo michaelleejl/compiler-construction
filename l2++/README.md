@@ -1,3 +1,9 @@
+---
+header-includes:
+ - \usepackage{fvextra}
+ - \usepackage{amsmath}
+ - \DefineVerbatimEnvironment{Highlighting}{Verbatim}{breaklines,commandchars=\\\{\}}
+---
 ### L2++ Syntax
 Booleans $b \in \mathbb{B} = \{\mathbf{true}, \mathbf{false}\}$\
 Integers $n \in \mathbb{N} = \{\dots, -1, 0, 1, \dots\}$\
@@ -6,10 +12,10 @@ Variables $x \in \mathbb{X} = \{\text{x}, \text{y}, \dots\}$. Implemented as str
 Operations $op ::= +|-|\times|\div|\geq$ 
 
 Types
-$$\begin{split}
+$\begin{split}
 T & ::= \text{ int}\mid\text{bool}\mid\text{unit}\mid T_1 \rightarrow T_2\\
 T_{loc} & ::= \text{ intref}
-\end{split}$$
+\end{split}$
 Expressions
 $$\begin{split}
 e ::= &\, \, \, \, \, n \mid b \mid e_1\  op\  e_2 \mid \mathbf{if}\ e_1\ \mathbf{then}\ e_2\ \mathbf{else}\ e_3 \mid l:=e \mid \,!l
