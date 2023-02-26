@@ -1,0 +1,6 @@
+# dune init project l1
+# OCAMLPARAM: unset
+# Shared cache: disabled
+# Workspace root:
+# /Users/michaelleejl/Documents/compiler-construction/2022_cc_supos/l1
+# Auto-detected concurrency: 10

@@ -1,1 +1,2 @@
-Simple repository for hosting supervision work. This is very much based on the excellent code available from Tim Griffin.
+Compiler construction for the language l2++. 
+Based on the work by Timothy Griffin, Jeremy Yallop, and Mike Pollard.
