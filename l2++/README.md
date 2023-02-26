@@ -12,10 +12,10 @@ Variables $x \in \mathbb{X} = \{\text{x}, \text{y}, \dots\}$. Implemented as str
 Operations $op ::= +|-|\times|\div|\geq$ 
 
 Types
-$$\begin{split}
+$$\begin{equation}\begin{split}
 T & ::= \text{ int}\mid\text{bool}\mid\text{unit}\mid T_1 \rightarrow T_2\\
 T_{loc} & ::= \text{ intref}
-\end{split}$$
+\end{split}\end{equation}$$
 
 Expressions
 $$\begin{split}
