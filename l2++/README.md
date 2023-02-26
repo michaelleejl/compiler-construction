@@ -16,6 +16,7 @@ $$\begin{split}
 T & ::= \text{ int}\mid\text{bool}\mid\text{unit}\mid T_1 \rightarrow T_2\\
 T_{loc} & ::= \text{ intref}
 \end{split}$$
+
 Expressions
 $$\begin{split}
 e ::= &\, \, \, \, \, n \mid b \mid e_1\  op\  e_2 \mid \mathbf{if}\ e_1\ \mathbf{then}\ e_2\ \mathbf{else}\ e_3 \mid l:=e \mid \,!l
