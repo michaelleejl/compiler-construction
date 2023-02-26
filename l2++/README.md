@@ -6,23 +6,19 @@ Variables $x \in \mathbb{X} = \{\text{x}, \text{y}, \dots\}$. Implemented as str
 Operations $op ::= +|-|\times|\div|\geq$ 
 
 Types
-$$
-\begin{split}
+$$\begin{split}
 T & ::= \text{ int}\mid\text{bool}\mid\text{unit}\mid T_1 \rightarrow T_2\\
 T_{loc} & ::= \text{ intref}
-\end{split}
-$$
+\end{split}$$
 Expressions
-$$
-\begin{split}
+$$\begin{split}
 e ::= &\, \, \, \, \, n \mid b \mid e_1\  op\  e_2 \mid \mathbf{if}\ e_1\ \mathbf{then}\ e_2\ \mathbf{else}\ e_3 \mid l:=e \mid \,!l
 \\
 &\mid\mathbf{skip}\mid e_1;e_2\mid \mathbf{begin}\ e\ \mathbf{end} \mid \mathbf{while}\ e_1\ \mathbf{do}\ e_2 \mid x
 \\
 & \mid \mathbf{fn}\ x:T\Rightarrow e \mid e_1\ e_2 \mid\mathbf{let}\ \mathbf{val}\ x:T = e_1\ \mathbf{in}\ e_2\ \mathbf{end} 
 \\& \mid \text{\bf{let val rec}}\ x:T_1 \rightarrow T_2 = (\mathbf{fn}\ y: T_1\Rightarrow e_1)\ \mathbf{in}\ e_2\ \mathbf{end}
-\end{split}
-$$
+\end{split}$$
 
 
 ### Building 
