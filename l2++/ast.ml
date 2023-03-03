@@ -20,6 +20,7 @@ type expr =
        | Lambda of      lambda
        | Let of         var * expr * expr
        | LetRecFn of    var * lambda * expr
+       | Var of var
 and lambda = var * expr 
 
 

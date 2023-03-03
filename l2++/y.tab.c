@@ -1593,7 +1593,7 @@ yyreduce:
 
   case 27:
 #line 83 "parser.mly"
-    { Past.TEarrow ((yyvsp[(1) - (3)].Past.expr), (yyvsp[(3) - (3)].Past.expr))}
+    { Past.TEArrow ((yyvsp[(1) - (3)].Past.expr), (yyvsp[(3) - (3)].Past.expr))}
     break;
 
 

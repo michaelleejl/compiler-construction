@@ -8,10 +8,10 @@ type var = string
 type loc = Lexing.position 
 
 type type_expr = 
-   | TEint
-   | TEbool 
-   | TEunit 
-   | TEarrow of type_expr * type_expr
+   | TEInt
+   | TEBool 
+   | TEUnit 
+   | TEArrow of type_expr * type_expr
 
 type formals = (var * type_expr) list
 
@@ -34,6 +34,7 @@ type expr =
        | Lambda of      loc * lambda
        | Let of         loc * var * type_expr * expr * expr
        | LetRecFn of    loc * var * type_expr * lambda * expr
+       | Var of         loc * var
 and lambda = var * type_expr * expr 
 
 let  loc_of_expr = function 
@@ -51,6 +52,7 @@ let  loc_of_expr = function
 	  | Lambda(loc, _)                   -> loc
     | Let(loc, _, _, _, _)             -> loc
     | LetRecFn(loc, _, _, _, _)        -> loc
+    | Var(loc, _)                      -> loc
 
 
 let string_of_loc loc = 
@@ -66,10 +68,10 @@ open Format
 *) 
 
 let rec pp_type = function 
-  | TEint -> "int" 
-  | TEbool -> "bool" 
-  | TEunit -> "unit" 
-  | TEarrow(t1, t2)   -> "(" ^ (pp_type t1) ^ " -> " ^ (pp_type t2) ^ ")" 
+  | TEInt -> "int" 
+  | TEBool -> "bool" 
+  | TEUnit -> "unit" 
+  | TEArrow(t1, t2)   -> "(" ^ (pp_type t1) ^ " -> " ^ (pp_type t2) ^ ")" 
 
 let pp_uop = function 
   | NEG -> "-" 
@@ -107,6 +109,7 @@ let rec pp_expr ppf = function
     | Lambda (_, l)                       -> pp_lambda ppf l
     | Let (_, x, t, e1, e2)               -> fprintf ppf "let val %s:%a = %a in (%a) end" x pp_type t pp_expr e1 pp_expr e2
     | LetRecFn(_, x, t, l, e)            -> fprintf ppf "let val rec %s:%a = (%a) in (%a) end" x pp_type t pp_lambda l pp_expr e
+  
 and pp_lambda ppf (l:lambda)=
     match l with
     | (v, t, e) -> fprintf ppf "fn %s:%a => (%a)" v pp_type t pp_expr e
@@ -140,10 +143,10 @@ let mk_con con l =
     in aux (con ^ "(") l 
 
 let rec string_of_type = function 
-  | TEint             -> "TEint" 
-  | TEbool            -> "TEbool" 
-  | TEunit            -> "TEunit" 
-  | TEarrow(t1, t2)   -> mk_con "TEarrow" [string_of_type t1; string_of_type t2] 
+  | TEInt             -> "TEInt" 
+  | TEBool            -> "TEBool" 
+  | TEUnit            -> "TEUnit" 
+  | TEArrow(t1, t2)   -> mk_con "TEArrow" [string_of_type t1; string_of_type t2] 
 
 let rec string_of_expr = function 
     | Integer (_, n)                      -> mk_con "Integer" [string_of_int n]

@@ -21,6 +21,7 @@ type address = int
 
 type value = 
      | INT of int 
+     | BOOL of bool
 
 and closure = var * expr * env 
 
@@ -29,6 +30,7 @@ and continuation_action =
   | OPER of oper * value 
   | OPER_FST of Ast.expr * env * Ast.oper 
   | TAIL of Ast.expr list * env
+  | IF of Ast.expr * Ast.expr * env
 
 and continuation = continuation_action  list
 
@@ -69,6 +71,7 @@ let do_oper = function
   | (SUB,  INT m,   INT n)  -> INT (m - n)
   | (MUL,  INT m,   INT n)  -> INT (m * n)
   | (DIV,  INT m,   INT n)  -> INT (m / n)
+  | (GTEQ, INT m,   INT n)  -> BOOL (m >= n)
   | (op, _, _)  -> complain ("malformed binary operator: " ^ (string_of_oper op))
 
 
@@ -125,11 +128,15 @@ let step = function
  | EXAMINE(Op(e1, op, e2),              env, k) -> EXAMINE(e1, env, OPER_FST(e2, env, op) :: k)
  | EXAMINE(Seq [e],                     env, k) -> EXAMINE(e, env, k) 
  | EXAMINE(Seq (e :: rest),             env, k) -> EXAMINE(e, env, TAIL (rest, env) :: k) 
+ | EXAMINE(If (e1, e2, e3),             env, k) -> EXAMINE(e1, env, IF (e2, e3, env) :: k)
  (* EXAMINE --> COMPUTE *) 
- | EXAMINE(Integer n,         _, k) -> COMPUTE(k, INT n) 
+ | EXAMINE(Integer n,         _, k) -> COMPUTE(k, INT n)
  (* COMPUTE --> COMPUTE *) 
  | COMPUTE((UNARY op) :: k,    v) -> COMPUTE(k ,(do_unary(op, v)))
  | COMPUTE(OPER(op, v1) :: k, v2) -> COMPUTE(k, do_oper(op, v1, v2))
+ | COMPUTE(IF(e2, e3, env)::k, v) -> (match v with 
+                                    | BOOL(true) -> EXAMINE(e2, env, k)
+                                    | BOOL(false) -> EXAMINE(e3, env, k))
  (* COMPUTE --> EXAMINE *) 
  | COMPUTE(OPER_FST (e2, env, op) :: k,         v1)  -> EXAMINE(e2, env, OPER (op, v1) :: k)
  | COMPUTE((TAIL (el, env)) :: k,     _)  ->  EXAMINE(Seq el, env, k) 

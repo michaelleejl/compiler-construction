@@ -68,7 +68,7 @@ let int_reg_exp = ['0'-'9']+
 	  | "true"         { TRUE }
 	  | "false"        { FALSE }
 	  | int_reg_exp    { INT (int_of_string (Lexing.lexeme lexbuf)) }
-	  | locat_reg_exp  { LOCAT get_location (Lexing.lexeme lexbuf) }
+	  | locat_reg_exp  { LOCAT (get_location (Lexing.lexeme lexbuf)) }
 	  | ident_reg_exp  { IDENT (Lexing.lexeme lexbuf) }
 
 	  (*misc*)

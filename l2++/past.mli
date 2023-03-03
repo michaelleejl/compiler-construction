@@ -1,6 +1,6 @@
 type var = string
 type loc = Lexing.position
-type type_expr = TEint | TEbool | TEunit | TEarrow of type_expr * type_expr
+type type_expr = TEInt | TEBool | TEUnit | TEArrow of type_expr * type_expr
 type formals = (var * type_expr) list
 type oper = ADD | MUL | DIV | SUB | GTEQ
 type unary_oper = NEG
@@ -19,6 +19,7 @@ type expr =
   | Lambda of loc * lambda
   | Let of loc * var * type_expr * expr * expr
   | LetRecFn of loc * var * type_expr * lambda * expr
+  | Var of loc * var
 and lambda = var * type_expr * expr
 val loc_of_expr : expr -> loc
 val string_of_loc : Lexing.position -> string

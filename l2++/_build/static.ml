@@ -45,31 +45,43 @@ let rec match_types (t1, t2) = (t1 = t2)
 
 let make_uop loc uop (e, t) = 
     match uop, t with 
-    | NEG, TEint  -> (UnaryOp(loc, uop, e), t) 
+    | NEG, TEInt  -> (UnaryOp(loc, uop, e), t) 
     | NEG, t'     -> report_expecting e "integer" t
+
+let make_if loc (e1, t1) (e2, t2) (e3, t3) = 
+    match t1 with 
+    | TEBool -> 
+            if match_types (t2, t3) 
+             then (If(loc, e1, e2, e3), t2) 
+             else report_type_mismatch (e2, t2) (e3, t3) 
+         | ty -> report_expecting e1 "boolean" ty 
 
 let make_bop loc bop (e1, t1) (e2, t2) = 
     match bop, t1, t2 with 
-    | ADD, TEint,  TEint  -> (Op(loc, e1, bop, e2), t1) 
-    | ADD, TEint,  t      -> report_expecting e2 "integer" t
+    | ADD, TEInt,  TEInt  -> (Op(loc, e1, bop, e2), t1) 
+    | ADD, TEInt,  t      -> report_expecting e2 "integer" t
     | ADD, t,      _      -> report_expecting e1 "integer" t
-    | SUB, TEint,  TEint  -> (Op(loc, e1, bop, e2), t1) 
-    | SUB, TEint,  t      -> report_expecting e2 "integer" t
+    | SUB, TEInt,  TEInt  -> (Op(loc, e1, bop, e2), t1) 
+    | SUB, TEInt,  t      -> report_expecting e2 "integer" t
     | SUB, t,      _      -> report_expecting e1 "integer" t
-    | MUL, TEint,  TEint  -> (Op(loc, e1, bop, e2), t1) 
-    | MUL, TEint,  t      -> report_expecting e2 "integer" t
+    | MUL, TEInt,  TEInt  -> (Op(loc, e1, bop, e2), t1) 
+    | MUL, TEInt,  t      -> report_expecting e2 "integer" t
     | MUL, t,      _      -> report_expecting e1 "integer" t
-    | DIV, TEint,  TEint  -> (Op(loc, e1, bop, e2), t1) 
-    | DIV, TEint,  t      -> report_expecting e2 "integer" t
+    | DIV, TEInt,  TEInt  -> (Op(loc, e1, bop, e2), t1) 
+    | DIV, TEInt,  t      -> report_expecting e2 "integer" t
     | DIV, t,      _      -> report_expecting e1 "integer" t
-
+    | GTEQ, TEInt, TEInt  -> (Op(loc, e1, bop, e2), TEBool)
+    | GTEQ, TEInt,  t     -> report_expecting e2 "integer" t
+    | GTEQ, t,      _     -> report_expecting e1 "integer" t
 
 let rec  infer env e = 
     match e with 
-    | Integer _            -> (e, TEint)
+    | Integer _            -> (e, TEInt)
+    | Bool _            -> (e, TEBool)
     | UnaryOp(loc, uop, e) -> make_uop loc uop (infer env e) 
     | Op(loc, e1, bop, e2) -> make_bop loc bop (infer env e1) (infer env e2) 
     | Seq(loc, el)         -> infer_seq loc env el 
+    | If(loc, e1, e2, e3)  -> make_if loc (infer env e1) (infer env e2) (infer env e3) 
 
 and infer_seq loc env el = 
     let rec aux carry = function 

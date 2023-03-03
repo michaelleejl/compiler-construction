@@ -3,6 +3,7 @@ type address = int
 
 type value = 
      | INT of int 
+     | BOOL of bool
 
 and closure = Ast.var * Ast.expr * env 
 
@@ -11,6 +12,7 @@ and continuation_action =
   | OPER of Ast.oper * value
   | OPER_FST of Ast.expr * env * Ast.oper 
   | TAIL of Ast.expr list * env
+  | IF of Ast.expr * Ast.expr * env
 
 and continuation = continuation_action  list
 

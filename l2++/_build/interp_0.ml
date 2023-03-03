@@ -24,6 +24,7 @@ type store = address -> value
 
 and value = 
      | INT of int 
+     | BOOL of bool
 
 type env = var -> value 
 
@@ -35,7 +36,7 @@ type bindings = binding list
 
 let rec string_of_value = function 
      | INT n -> string_of_int n 
-    
+     | BOOL b -> string_of_bool b
 (* update : (env * binding) -> env 
    update : (store * (address * value)) -> store
 *) 
@@ -52,6 +53,7 @@ let do_oper = function
   | (SUB,  INT m,   INT n)  -> INT (m - n)
   | (MUL,  INT m,   INT n)  -> INT (m * n)
   | (DIV,  INT m,   INT n)  -> INT (m / n)
+  | (GTEQ, INT m,   INT n)  -> BOOL (m >= n)
   | (op, _, _)  -> complain ("malformed binary operator: " ^ (string_of_oper op))
 
 (*
@@ -61,11 +63,35 @@ let do_oper = function
 let rec interpret (e, env, store) = 
     match e with 
 	| Integer n        -> (INT n, store) 
-    | Op(e1, op, e2)   -> let (v1, store1) = interpret(e1, env, store) in 
-                          let (v2, store2) = interpret(e2, env, store1) in (do_oper(op, v1, v2), store2) 
-    | Seq [e]          -> interpret (e, env, store)
-    | Seq (e :: rest)  -> let (_,  store1) = interpret(e, env, store) 
-                          in interpret(Seq rest, env, store1) 
+  | Op(e1, op, e2)   -> let (v1, store1) = interpret(e1, env, store) in 
+                        let (v2, store2) = interpret(e2, env, store1) in (do_oper(op, v1, v2), store2) 
+  | Seq [e]          -> interpret (e, env, store)
+  | Seq (e :: rest)  -> let (_,  store1) = interpret(e, env, store) 
+                        in interpret(Seq rest, env, store1) 
+  | If (e1, e2, e3) -> let (BOOL v, store1) = interpret(e1, env, store) 
+                       in if v then interpret(e2, env, store1) else interpret(e3, env, store1) 
+    (* 1. evaluate e1
+       2. if e1 is true then evaluate e2
+
+    *)
+
+  (*
+   | Integer of     int
+       | Skip
+       | Bool of        bool
+       | Deref of       string
+       | App of         expr * expr
+       | UnaryOp of     unary_oper * expr
+       | Op of          expr * oper * expr
+       | Assign of      var * expr
+       | If of          expr * expr * expr
+       | While of       expr * expr
+       | Seq of         expr list
+       | Lambda of      lambda
+       | Let of         var * expr * expr
+       | LetRecFn of    var * lambda * expr
+       | Var of var   
+  *)
 
 (* env_empty : env *) 
 let empty_env = fun x -> complain (x ^ " is not defined!\n")
