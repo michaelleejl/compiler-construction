@@ -4,6 +4,7 @@
 
 *) 
 type var = string 
+type store_location = int
 
 type loc = Lexing.position 
 
@@ -12,6 +13,7 @@ type type_expr =
    | TEBool 
    | TEUnit 
    | TEArrow of type_expr * type_expr
+   | TERef of type_expr
 
 type formals = (var * type_expr) list
 
@@ -23,11 +25,11 @@ type expr =
        | Integer of     loc * int
        | Skip of        loc
        | Bool of        loc * bool
-       | Deref of       loc * string
+       | Deref of       loc * store_location
        | App of         loc * expr * expr
        | UnaryOp of     loc * unary_oper * expr
        | Op of          loc * expr * oper * expr
-       | Assign of      loc * var * expr
+       | Assign of      loc * store_location * expr
        | If of          loc * expr * expr * expr
        | While of       loc * expr * expr
        | Seq of         loc * (expr list)
@@ -72,6 +74,7 @@ let rec pp_type = function
   | TEBool -> "bool" 
   | TEUnit -> "unit" 
   | TEArrow(t1, t2)   -> "(" ^ (pp_type t1) ^ " -> " ^ (pp_type t2) ^ ")" 
+  | TERef t -> (pp_type t) ^ "ref"
 
 let pp_uop = function 
   | NEG -> "-" 
@@ -96,11 +99,11 @@ let rec pp_expr ppf = function
     | Integer (_, n)                      -> fstring ppf (string_of_int n)
     | Skip (_)                            -> fstring ppf "skip"
     | Bool(_, b)                          -> fstring ppf (string_of_bool b)
-    | Deref(_, s)                         -> fprintf ppf "!%s" s
+    | Deref(_, s)                         -> fprintf ppf "!%i" s
     | App(_, e1, e2)                      -> fprintf ppf "(%a)(%a)" pp_expr e1 pp_expr e2
     | UnaryOp(_, op, e)                   -> fprintf ppf "%a(%a)" pp_unary op pp_expr e 
     | Op(_, e1, op, e2)                   -> fprintf ppf "(%a %a %a)" pp_expr e1  pp_binary op pp_expr e2
-    | Assign(_, v, e)                     -> fprintf ppf "%s := %a" v pp_expr e
+    | Assign(_, v, e)                     -> fprintf ppf "%i := %a" v pp_expr e
     | If(_, e1, e2, e3)                   -> fprintf ppf "if (%a) then (%a) else (%a)" pp_expr e1 pp_expr e2 pp_expr e3
     | While(_, e1, e2)                    -> fprintf ppf "while (%a) do (%a)" pp_expr e1 pp_expr e2
     | Seq (_, [])                         -> () 
@@ -108,8 +111,8 @@ let rec pp_expr ppf = function
     | Seq (l, e :: rest)                  -> fprintf ppf "%a; %a" pp_expr e pp_expr (Seq(l, rest))	
     | Lambda (_, l)                       -> pp_lambda ppf l
     | Let (_, x, t, e1, e2)               -> fprintf ppf "let val %s:%a = %a in (%a) end" x pp_type t pp_expr e1 pp_expr e2
-    | LetRecFn(_, x, t, l, e)            -> fprintf ppf "let val rec %s:%a = (%a) in (%a) end" x pp_type t pp_lambda l pp_expr e
-  
+    | LetRecFn(_, x, t, l, e)             -> fprintf ppf "let val rec %s:%a = (%a) in (%a) end" x pp_type t pp_lambda l pp_expr e
+    | Var(_, x)                           -> fprintf ppf "%s" x
 and pp_lambda ppf (l:lambda)=
     match l with
     | (v, t, e) -> fprintf ppf "fn %s:%a => (%a)" v pp_type t pp_expr e
@@ -147,22 +150,25 @@ let rec string_of_type = function
   | TEBool            -> "TEBool" 
   | TEUnit            -> "TEUnit" 
   | TEArrow(t1, t2)   -> mk_con "TEArrow" [string_of_type t1; string_of_type t2] 
+  | TERef(t)          -> mk_con "TERef" [string_of_type t]
 
 let rec string_of_expr = function 
     | Integer (_, n)                      -> mk_con "Integer" [string_of_int n]
     | Skip (_)                            -> mk_con "Skip" []
     | Bool (_, b)                         -> mk_con "Bool" [string_of_bool b]
-    | Deref (_, l)                        -> mk_con "Deref" [l]
+    | Deref (_, l)                        -> mk_con "Deref" [string_of_int l]
     | App (_, e1, e2)                     -> mk_con "Apply" [string_of_expr e1; string_of_expr e2] 
     | UnaryOp(_, op, e)                   -> mk_con "UnaryOp" [string_of_uop op; string_of_expr e]
     | Op(_, e1, op, e2)                   -> mk_con "Op" [string_of_expr e1; string_of_bop op; string_of_expr e2]
-    | Assign(_, l, e)                     -> mk_con "Assign" [l; string_of_expr e]
+    | Assign(_, l, e)                     -> mk_con "Assign" [string_of_int l; string_of_expr e]
     | If(_, e1, e2, e3)                   -> mk_con "If" [string_of_expr e1; string_of_expr e2; string_of_expr e3]
     | While(_, e1, e2)                    -> mk_con "While" [string_of_expr e1; string_of_expr e2]
     | Seq (_, el)                         -> mk_con "Seq" [string_of_expr_list el]
     | Lambda (_, (x, t, e))               -> mk_con "Lambda" [x; string_of_type t; string_of_expr e]
     | Let (_, x, t, e1, e2)               -> mk_con "Let" [x; string_of_type t; string_of_expr e1; string_of_expr e2]
     | LetRecFn (_, x, t, (y, t1, e1), e)  -> mk_con "LetRecFn" [x; string_of_type t; mk_con "" [y; string_of_type t1; string_of_expr e1]; string_of_expr e]
+    | Var(_, x)                           -> mk_con "Var" [x]
+
 and string_of_expr_list = function 
   | [] -> "" 
   | [e] -> string_of_expr e 

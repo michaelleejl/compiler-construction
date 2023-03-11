@@ -1,5 +1,6 @@
 
 type var = string 
+type loc = int
 
 type oper = ADD | MUL | DIV | SUB | GTEQ
 
@@ -9,16 +10,15 @@ type expr =
        | Integer of     int
        | Skip
        | Bool of        bool
-       | Deref of       string
+       | Deref of       loc
        | App of         expr * expr
        | UnaryOp of     unary_oper * expr
        | Op of          expr * oper * expr
-       | Assign of      var * expr
+       | Assign of      loc * expr
        | If of          expr * expr * expr
        | While of       expr * expr
        | Seq of         expr list
        | Lambda of      lambda
-       | Let of         var * expr * expr
        | LetRecFn of    var * lambda * expr
        | Var of var
 and lambda = var * expr 
@@ -57,17 +57,17 @@ let rec pp_expr ppf = function
     | Integer n         -> fstring ppf (string_of_int n)
     | Skip              -> fstring ppf "skip"
     | Bool b            -> fstring ppf (string_of_bool b)
-    | Deref s           -> fprintf ppf "!%s" s
+    | Deref s           -> fprintf ppf "!%i" s
     | App(e1, e2)       -> fprintf ppf "(%a)(%a)" pp_expr e1 pp_expr e2
     | UnaryOp(op, e)    -> fprintf ppf "%a(%a)" pp_unary op pp_expr e 
     | Op(e1, op, e2)    -> fprintf ppf "(%a %a %a)" pp_expr e1  pp_binary op pp_expr e2 
-    | Assign(v, e)      -> fprintf ppf "%s := %a" v pp_expr e
+    | Assign(v, e)      -> fprintf ppf "%i := %a" v pp_expr e
     | If(e1, e2, e3)    -> fprintf ppf "if (%a) then (%a) else (%a)" pp_expr e1 pp_expr e2 pp_expr e3
     | While(e1, e2)     -> fprintf ppf "while (%a) do (%a)" pp_expr e1 pp_expr e2
     | Seq el            -> fprintf ppf "begin %a end" pp_expr_list el 
     | Lambda l          -> pp_lambda ppf l
-    | Let (x, e1, e2)   -> fprintf ppf "let val %s = %a in (%a) end" x pp_expr e1 pp_expr e2
     | LetRecFn(x, l, e) -> fprintf ppf "let val rec %s = (%a) in (%a) end" x pp_lambda l pp_expr e
+    | Var x             -> fprintf ppf "var %s" x
 and pp_expr_list ppf = function 
   | [] -> () 
   | [e] -> pp_expr ppf e 
@@ -107,17 +107,18 @@ let rec string_of_expr = function
 | Integer n                 -> mk_con "Integer" [string_of_int n]
 | Skip                      -> mk_con "Skip" []
 | Bool b                    -> mk_con "Bool" [string_of_bool b]
-| Deref l                   -> mk_con "Deref" [l]
+| Deref l                   -> mk_con "Deref" [string_of_int l]
 | App (e1, e2)              -> mk_con "Apply" [string_of_expr e1; string_of_expr e2] 
 | UnaryOp(op, e)            -> mk_con "UnaryOp" [string_of_uop op; string_of_expr e]
 | Op(e1, op, e2)            -> mk_con "Op" [string_of_expr e1; string_of_bop op; string_of_expr e2]
-| Assign(l, e)              -> mk_con "Assign" [l; string_of_expr e]
+| Assign(l, e)              -> mk_con "Assign" [string_of_int l; string_of_expr e]
 | If(e1, e2, e3)            -> mk_con "If" [string_of_expr e1; string_of_expr e2; string_of_expr e3]
 | While(e1, e2)             -> mk_con "While" [string_of_expr e1; string_of_expr e2]
 | Seq (el)                  -> mk_con "Seq" [string_of_expr_list el]
 | Lambda (x, e)             -> mk_con "Lambda" [x; string_of_expr e]
-| Let (x, e1, e2)           -> mk_con "Let" [x; string_of_expr e1; string_of_expr e2]
 | LetRecFn (x, (y, e1), e)  -> mk_con "LetRecFn" [x; mk_con "" [y; string_of_expr e1]; string_of_expr e]
+| Var x                     -> mk_con "Var" [x]
+
 and string_of_expr_list = function 
   | [] -> "" 
   | [e] -> string_of_expr e 

@@ -13,13 +13,13 @@ let next_line lexbuf =
     }
 
 let get_location loc =
-	String.sub loc 4 (String.length loc)
+	int_of_string (String.sub loc 4 ((String.length loc) - 4))
 
 }
 
 
 let newline = ('\010' | "\013\010" )
-let locat_reg_exp = "loc_"['0'-'9' 'A'-'Z' 'a'-'z']* 
+let locat_reg_exp = "loc_"['0'-'9']+
 let ident_reg_exp = ['A'-'Z' 'a'-'z']+ ['0'-'9' 'A'-'Z' 'a'-'z' '_' '\'']* 
 let int_reg_exp = ['0'-'9']+
 
@@ -31,6 +31,7 @@ let int_reg_exp = ['0'-'9']+
 	  | "->"           { ARROW }
 	  | ":="           { ASSIGN }
 	  | ">="		   { GTEQ }
+	  | ';'	           { SEMICOLON }
 	  | '+'            { ADD }
 	  | '-'            { SUB }
 	  | '*'            { MUL }
@@ -39,7 +40,6 @@ let int_reg_exp = ['0'-'9']+
 	  | ':'			   { COLON }
 	  | '('            { LPAREN }
 	  | ')'            { RPAREN }
-	  | ';'	           { SEMICOLON }
 	  | "!"			   { BANG }
 
 	  (*control flow*)

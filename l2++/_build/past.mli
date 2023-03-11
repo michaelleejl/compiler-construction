@@ -1,6 +1,7 @@
 type var = string
+type store_location = int
 type loc = Lexing.position
-type type_expr = TEInt | TEBool | TEUnit | TEArrow of type_expr * type_expr
+type type_expr = TEInt | TEBool | TEUnit | TEArrow of type_expr * type_expr | TERef of type_expr
 type formals = (var * type_expr) list
 type oper = ADD | MUL | DIV | SUB | GTEQ
 type unary_oper = NEG
@@ -8,11 +9,11 @@ type expr =
     Integer of loc * int
   | Skip of loc
   | Bool of loc * bool
-  | Deref of loc * string
+  | Deref of loc * store_location
   | App of loc * expr * expr
   | UnaryOp of loc * unary_oper * expr
   | Op of loc * expr * oper * expr
-  | Assign of loc * var * expr
+  | Assign of loc * store_location * expr
   | If of loc * expr * expr * expr
   | While of loc * expr * expr
   | Seq of loc * expr list

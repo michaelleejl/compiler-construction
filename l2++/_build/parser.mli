@@ -1,7 +1,7 @@
 type token =
   | INT of (int)
   | IDENT of (string)
-  | LOCAT of (string)
+  | LOCAT of (int)
   | SKIP
   | TRUE
   | FALSE
@@ -12,6 +12,7 @@ type token =
   | EQUALS
   | GTEQ
   | ASSIGN
+  | REF
   | LPAREN
   | RPAREN
   | SEMICOLON
@@ -34,6 +35,7 @@ type token =
   | INTTYPE
   | BOOLTYPE
   | UNITTYPE
+  | REFTYPE
   | EOF
 
 val main :

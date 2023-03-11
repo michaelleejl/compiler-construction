@@ -1,21 +1,21 @@
 
 type var = string
+type loc = int
 type oper = ADD | MUL | DIV | SUB | GTEQ
 type unary_oper = NEG
 type expr =
     Integer of int
   | Skip
   | Bool of bool
-  | Deref of string
+  | Deref of loc
   | App of expr * expr
   | UnaryOp of unary_oper * expr
   | Op of expr * oper * expr
-  | Assign of var * expr
+  | Assign of loc * expr
   | If of expr * expr * expr
   | While of expr * expr
   | Seq of expr list
   | Lambda of lambda
-  | Let of var * expr * expr
   | LetRecFn of var * lambda * expr
   | Var of var
 and lambda = var * expr

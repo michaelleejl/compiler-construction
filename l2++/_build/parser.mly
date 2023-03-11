@@ -9,12 +9,12 @@ let get_loc = Parsing.symbol_start_pos
 
 %token <int> INT
 %token <string> IDENT
-%token <string> LOCAT
+%token <int> LOCAT
 %token SKIP TRUE FALSE
-%token ADD SUB MUL DIV EQUALS GTEQ ASSIGN 
+%token ADD SUB MUL DIV EQUALS GTEQ ASSIGN REF
 %token LPAREN RPAREN SEMICOLON COLON ARROW BANG DARROW
 %token END WHILE DO IF THEN ELSE LAMBDA LET IN LETREC FUN BEGIN
-%token INTTYPE BOOLTYPE UNITTYPE
+%token INTTYPE BOOLTYPE UNITTYPE REFTYPE
 %token EOF
 
 /* Associativities for binary operations
@@ -79,11 +79,13 @@ expr:
 | LETREC IDENT COLON typexpr EQUALS LPAREN FUN IDENT COLON typexpr DARROW expr RPAREN IN expr END  { Past.LetRecFn(get_loc(), $2, $4, ($8, $10, $12), $15) }
 
 exprlist:
-  expr SEMICOLON exprlist							{ $1::$3 }
+    expr { [$1]}
+  | expr SEMICOLON exprlist							{ $1::$3 }
 
 typexpr:
   INTTYPE							 { Past.TEInt }
 | BOOLTYPE							 { Past.TEBool }
 | UNITTYPE							 { Past.TEUnit }
 | typexpr ARROW typexpr              { Past.TEArrow ($1, $3)}
+| REFTYPE typexpr     {Past.TERef ($2)}
 
