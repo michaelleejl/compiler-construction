@@ -5,6 +5,7 @@ type value =
      | INT of int 
      | BOOL of bool
      | SKIP
+     | CLOSURE of closure
 
 and closure = Ast.var * Ast.expr * env 
 

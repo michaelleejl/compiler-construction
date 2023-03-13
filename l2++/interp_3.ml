@@ -28,6 +28,8 @@ type location = label * (address option)
 
 type value = 
   | INT of int 
+  | BOOL of bool
+  | SKIP
 
 and instruction = 
   | PUSH of value 
@@ -39,6 +41,8 @@ and instruction =
   | GOTO of location
   | LABEL of label 
   | HALT 
+  | ASSIGN of address
+  | DEREF of address
 
 and code = instruction list 
 
@@ -67,6 +71,8 @@ let string_of_list sep f l =
     
 let rec string_of_value = function 
      | INT n          -> string_of_int n 
+     | BOOL b         -> string_of_bool b 
+     | SKIP           -> "skip"
 
 and string_of_closure (loc, env) = 
    "(" ^ (string_of_location loc) ^ ", " ^ (string_of_env env) ^ ")"
@@ -88,6 +94,8 @@ and string_of_instruction = function
  | CASE l   -> "CASE " ^ (string_of_location l)
  | GOTO l   -> "GOTO " ^ (string_of_location l)
  | HALT     -> "HALT" 
+ | ASSIGN l  -> "ASSIGN " ^ (string_of_int l) 
+ | DEREF l  -> "DEREF " ^ (string_of_int l) 
 
 and string_of_code c = string_of_list "\n " string_of_instruction c 
 
@@ -142,10 +150,11 @@ let do_unary = function
   | (op, _) -> complain ("malformed unary operator: " ^ (string_of_unary_oper op))
 
 let do_oper = function 
-  | (ADD,  INT m,   INT n)  -> INT (m + n)
-  | (SUB,  INT m,   INT n)  -> INT (m - n)
-  | (MUL,  INT m,   INT n)  -> INT (m * n)
-  | (DIV,  INT m,   INT n)  -> INT (m / n)
+  | (ADD,  INT m,   INT n)  -> INT  (m +  n)
+  | (SUB,  INT m,   INT n)  -> INT  (m -  n)
+  | (MUL,  INT m,   INT n)  -> INT  (m *  n)
+  | (DIV,  INT m,   INT n)  -> INT  (m /  n)
+  | (GTEQ, INT m,   INT n)  -> BOOL (m >= n)
   | (op, _, _)  -> complain ("malformed binary operator: " ^ (string_of_oper op))
 
 
@@ -159,6 +168,10 @@ let step (cp, evs) =
  | (LABEL l,                           evs) -> (cp + 1, evs) 
  | (HALT,                              evs) -> (cp, evs) 
  | (GOTO (_, Some i),                  evs) -> (i, evs) 
+ | (TEST (_, Some i), (V(BOOL(true)))::evs) -> (cp+1, evs)
+ | (TEST (_, Some i), (V(BOOL(false)))::evs) -> (i, evs)
+ | (ASSIGN(l),                   (V v)::evs) -> heap.(l) <- v; (cp+1, (V(SKIP))::evs)
+ | (DEREF (l),                          evs) -> let v = heap.(l) in (cp+1, (V v)::evs)
  | _ -> complain ("step : bad state = " ^ (string_of_state (cp, evs)) ^ "\n")
 
 (* COMPILE *) 
@@ -170,6 +183,8 @@ let new_label =
 
 let rec comp = function 
   | Integer n      -> ([], [PUSH (INT n)]) 
+  | Bool b         -> ([], [PUSH (BOOL b)])
+  | Skip           -> ([], [PUSH (SKIP)])
   | UnaryOp(op, e) -> let (defs, c) = comp e in  (defs, c @ [UNARY op])
   | Op(e1, op, e2) -> let (defs1, c1) = comp e1 in  
                       let (defs2, c2) = comp e2 in  
@@ -179,6 +194,41 @@ let rec comp = function
  | Seq (e ::rest) -> let (defs1, c1) = comp e in  
                      let (defs2, c2) = comp (Seq rest) in  
                        (defs1 @ defs2, c1 @ [POP] @ c2)
+ | If (e1, e2, e3) -> let (defs1, c1) = comp e1 in 
+                     let (defs2, c2) = comp e2 in
+                     let (defs3, c3) = comp e3 in
+                     let else_label = new_label() in 
+                     let goto_label = new_label() in
+                     (defs1 @ defs2 @ defs3, 
+                     c1 @ 
+                     [TEST (else_label, None)] @ 
+                     c2 @ 
+                     [GOTO (goto_label, None); LABEL else_label] @
+                     c3 @
+                     [LABEL goto_label]
+                     )
+  | While(e1, e2) -> let (defs1, c1) = comp e1 in 
+                     let (defs2, c2) = comp e2 in 
+                     let while_label = new_label() in 
+                     let skip_label = new_label () in
+                     (defs1 @ defs2,
+                     [LABEL while_label] @
+                     c1 @
+                     [TEST (skip_label, None)] @
+                     c2 @
+                     [POP; GOTO(while_label, None); LABEL skip_label; PUSH (SKIP)]
+                     )
+  | Assign(l, e1) -> let (defs1, c1) = comp e1 in 
+                     (defs1, 
+                     c1 @ [ASSIGN(l)])
+  | Deref(l) ->      ([], [DEREF(l)])
+(*                   
+       | App of         expr * expr
+       | While of       expr * expr
+       | Lambda of      lambda
+       | LetRecFn of    var * lambda * expr
+       | Var of var
+*)
 let compile e = 
     let (defs, c) = comp e in 
     let result = c @               (* body of program *) 

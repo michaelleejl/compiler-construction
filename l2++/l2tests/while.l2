@@ -1,1 +1,1 @@
-while false do skip
+while 2 >= 3 do skip

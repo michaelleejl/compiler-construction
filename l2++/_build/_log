@@ -88,9 +88,7 @@
 # Target: interp_2.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:interp_2.cmo, file:interp_2.ml, implem, ocaml, quiet }
 /Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o interp_2.cmo interp_2.ml # cached
 # Target: interp_3.ml.depends, tags: { extension:ml, file:interp_3.ml, ocaml, ocamldep, quiet }
-/Users/michaelleejl/.opam/4.14.0/bin/ocamldep.opt -modules interp_3.ml > interp_3.ml.depends # cached
-# Target: interp_3.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:interp_3.cmo, file:interp_3.ml, implem, ocaml, quiet }
-/Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o interp_3.cmo interp_3.ml # cached
+/Users/michaelleejl/.opam/4.14.0/bin/ocamldep.opt -modules interp_3.ml > interp_3.ml.depends
 # Target: option.ml.depends, tags: { extension:ml, file:option.ml, ocaml, ocamldep, quiet }
 /Users/michaelleejl/.opam/4.14.0/bin/ocamldep.opt -modules option.ml > option.ml.depends # cached
 # Target: option.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:option.cmo, file:option.ml, implem, ocaml, quiet }
@@ -99,6 +97,37 @@
 /Users/michaelleejl/.opam/4.14.0/bin/ocamldep.opt -modules tests.ml > tests.ml.depends # cached
 # Target: tests.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:tests.cmo, file:tests.ml, implem, ocaml, quiet }
 /Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o tests.cmo tests.ml # cached
+# Target: interp_3.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:interp_3.cmo, file:interp_3.ml, implem, ocaml, quiet }
+/Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o interp_3.cmo interp_3.ml
++ /Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o interp_3.cmo interp_3.ml
+File "interp_3.ml", lines 88-98, characters 28-43:
+88 | ............................function 
+89 |  | UNARY op -> "UNARY " ^ (string_of_uop op) 
+90 |  | OPER op  -> "OPER " ^ (string_of_bop op) 
+91 |  | PUSH v   -> "PUSH " ^ (string_of_value v) 
+92 |  | POP      -> "POP"
+...
+95 |  | GOTO l   -> "GOTO " ^ (string_of_location l)
+96 |  | HALT     -> "HALT" 
+97 |  | ASSIGN l  -> "ASSIGN " ^ (string_of_int l) 
+98 |  | DEREF l  -> "DEREF " ^ (string_of_int l).
+Warning 8 [partial-match]: this pattern-matching is not exhaustive.
+Here is an example of a case that is not matched:
+LABEL _
+File "interp_3.ml", lines 184-224, characters 15-37:
+184 | ...............function 
+185 |   | Integer n      -> ([], [PUSH (INT n)]) 
+186 |   | Bool b         -> ([], [PUSH (BOOL b)])
+187 |   | Skip           -> ([], [PUSH (SKIP)])
+188 |   | UnaryOp(op, e) -> let (defs, c) = comp e in  (defs, c @ [UNARY op])
+...
+221 |   | Assign(l, e1) -> let (defs1, c1) = comp e1 in 
+222 |                      (defs1, 
+223 |                      c1 @ [ASSIGN(l)])
+224 |   | Deref(l) ->      ([], [DEREF(l)])
+Warning 8 [partial-match]: this pattern-matching is not exhaustive.
+Here is an example of a case that is not matched:
+(App (_, _)|Lambda _|LetRecFn (_, _, _)|Var _)
 # Target: ast.ml.depends, tags: { extension:ml, file:ast.ml, ocaml, ocamldep, quiet }
 /Users/michaelleejl/.opam/4.14.0/bin/ocamldep.opt -modules ast.ml > ast.ml.depends # cached
 # Target: ast.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:ast.cmo, file:ast.ml, implem, ocaml, quiet }
@@ -120,47 +149,9 @@
 # Target: pptree.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:pptree.cmo, file:pptree.ml, implem, ocaml, quiet }
 /Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o pptree.cmo pptree.ml # cached
 # Target: static.ml.depends, tags: { extension:ml, file:static.ml, ocaml, ocamldep, quiet }
-/Users/michaelleejl/.opam/4.14.0/bin/ocamldep.opt -modules static.ml > static.ml.depends
+/Users/michaelleejl/.opam/4.14.0/bin/ocamldep.opt -modules static.ml > static.ml.depends # cached
 # Target: static.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:static.cmo, file:static.ml, implem, ocaml, quiet }
-/Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o static.cmo static.ml
-+ /Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o static.cmo static.ml
-File "static.ml", lines 88-96, characters 4-98:
-88 | ....match tref with
-89 |     | TERef tr -> if match_types (t, tr) then (Assign(loc, l, e), TEUnit)
-90 |                   else let loc_str = string_of_loc loc in
-91 |                   let t_str = string_of_type t in 
-92 |                   let tr_str = string_of_type tr in
-93 |                   let e_str = string_of_expr e in
-94 |                   complain ("ERROR, Type Mismatch: expecting equal types, however\n" ^ 
-95 |                   "l" ^ "\nhas type " ^ tr_str ^ 
-96 |                   " and at location " ^ loc_str ^ "\nexpression " ^ e_str ^ "\nhas type " ^ t_str)
-Warning 8 [partial-match]: this pattern-matching is not exhaustive.
-Here is an example of a case that is not matched:
-(TEInt|TEBool|TEUnit|TEArrow (_, _))
-File "static.ml", lines 100-101, characters 4-41:
-100 | ....match tref with
-101 |         | TERef tr -> (Deref(loc, l), tr)
-Warning 8 [partial-match]: this pattern-matching is not exhaustive.
-Here is an example of a case that is not matched:
-(TEInt|TEBool|TEUnit|TEArrow (_, _))
-File "static.ml", lines 109-110, characters 28-103:
-109 | ............................match e1 with
-110 |                             | Lambda(loc, (x, t, e)) -> report_type_mismatch (Var(loc, x), tx) (e2, t2)
-Warning 8 [partial-match]: this pattern-matching is not exhaustive.
-Here is an example of a case that is not matched:
-(Integer (_, _)|Skip _|Bool (_, _)|Deref (_, _)|App (_, _, _)|
-UnaryOp (_, NEG, _)|Op (_, _, _, _)|Assign (_, _, _)|If (_, _, _, _)|
-While (_, _, _)|Seq (_, _)|Let (_, _, _, _, _)|
-LetRecFn (_, _, _, (_, _, _), _)|Var (_, _))
-File "static.ml", lines 106-110, characters 4-103:
-106 | ....match t1 with
-107 |     | TEArrow(tx, ty) -> if match_types (tx, t2) then (App(loc, e1, e2), ty)
-108 |                          else 
-109 |                             match e1 with
-110 |                             | Lambda(loc, (x, t, e)) -> report_type_mismatch (Var(loc, x), tx) (e2, t2)
-Warning 8 [partial-match]: this pattern-matching is not exhaustive.
-Here is an example of a case that is not matched:
-(TEInt|TEBool|TEUnit|TERef _)
+/Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o static.cmo static.ml # cached
 # Target: l1.byte, tags: { byte, dont_link_with, extension:byte, file:l1.byte, link, ocaml, program, quiet }
 /Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt errors.cmo ast.cmo past.cmo parser.cmo lexer.cmo option.cmo past_to_ast.cmo pptree.cmo static.cmo front_end.cmo interp_0.cmo interp_1.cmo interp_2.cmo interp_3.cmo tests.cmo l1.cmo -o l1.byte
 # Compilation successful.

@@ -5,7 +5,8 @@ type var = string
 
 type value = 
      | INT of int 
-
+     | BOOL of bool
+     | SKIP 
 and closure = code * env 
 
 
@@ -14,6 +15,10 @@ and instruction =
   | OPER of Ast.oper   
   | PUSH of value 
   | POP 
+  | TEST of code * code
+  | WHILE of code * code
+  | ASSIGN of address
+  | DEREF of address
 
 and code = instruction list 
 

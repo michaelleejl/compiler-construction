@@ -94,18 +94,6 @@ let rec interpret (e, env, store) =
     let env1 = update(env, (x, LAMBDA(y, LetRecFn(x, (y, e1), e1)))) in
     interpret(e2, env1, store)
 
-    (*let val rec x:T1->T2 = fn y:T1=>e1 in e2*)
-    (*[(fn y => let val rec x:T1->T2 = fn y:T1=>e1 in e1)/x]e2*)
-                       (* 1. evaluate e1
-       2. if e1 is true then evaluate e2
-
-    *)
-
-  (*
-   | Integer of     int
-       | LetRecFn of    var * lambda * expr
-  *)
-
 (* env_empty : env *) 
 let empty_env = fun x -> complain (x ^ " is not defined!\n")
 

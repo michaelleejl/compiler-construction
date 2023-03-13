@@ -26,6 +26,8 @@ type var = string
 
 type value = 
      | INT of int 
+     | BOOL of bool
+     | SKIP
 
 and closure = code * env 
 
@@ -33,7 +35,11 @@ and instruction =
   | UNARY of unary_oper   
   | OPER of oper 
   | PUSH of value 
-  | POP 
+  | POP
+  | TEST of code * code
+  | WHILE of code * code
+  | ASSIGN of address
+  | DEREF of address
 
 and code = instruction list 
 
@@ -62,6 +68,8 @@ let string_of_list sep f l =
 
 let rec string_of_value = function 
      | INT n          -> string_of_int n 
+     | BOOL b         -> string_of_bool b
+     | SKIP           -> "skip"
 
 and string_of_closure (c, env) = 
    "(" ^ (string_of_code c) ^ ", " ^ (string_of_env env) ^ ")"
@@ -132,10 +140,11 @@ let do_unary = function
   | (op, _) -> complain ("malformed unary operator: " ^ (string_of_unary_oper op))
 
 let do_oper = function 
-  | (ADD,  INT m,   INT n)  -> INT (m + n)
-  | (SUB,  INT m,   INT n)  -> INT (m - n)
-  | (MUL,  INT m,   INT n)  -> INT (m * n)
-  | (DIV,  INT m,   INT n)  -> INT (m / n)
+  | (ADD,  INT m,   INT n)  -> INT  (m + n)
+  | (SUB,  INT m,   INT n)  -> INT  (m - n)
+  | (MUL,  INT m,   INT n)  -> INT  (m * n)
+  | (DIV,  INT m,   INT n)  -> INT  (m / n)
+  | (GTEQ, INT m,   INT n)  -> BOOL (m >= n)
   | (op, _, _)  -> complain ("malformed binary operator: " ^ (string_of_oper op))
 
 (*
@@ -149,7 +158,11 @@ let step = function
  | (POP :: ds,                        e :: evs, s) -> (ds, evs, s) 
  | ((UNARY op) :: ds,             (V v) :: evs, s) -> (ds, V(do_unary(op, v)) :: evs, s) 
  | ((OPER op) :: ds,   (V v2) :: (V v1) :: evs, s) -> (ds, V(do_oper(op, v1, v2)) :: evs, s)
-
+ | ((TEST(t, _))::ds,    (V (BOOL(true)))::evs, s) -> (t @ ds, evs, s)
+ | ((TEST(_, e))::ds,   (V (BOOL(false)))::evs, s) -> (e @ ds, evs, s)
+ | ((WHILE(e1, e2))::ds,                   evs, s) -> (e1 @ [TEST((e2 @ [POP] @ [WHILE(e1, e2)]), [(PUSH SKIP)])] @ ds, evs, s)
+ | ((ASSIGN(l))::ds,                (V v)::evs, s) -> let new_s = assign s l v in (ds, V(SKIP)::evs, new_s)
+ | ((DEREF(l))::ds,                        evs, s) -> let v = deref s l in (ds, V(v)::evs, s)
  | state -> complain ("step : bad state = " ^ (string_of_interp_state state) ^ "\n")
 
 let rec driver n state = 
@@ -167,11 +180,23 @@ let rec driver n state =
 *) 
 let rec compile = function 
  | Integer n      -> [PUSH (INT n)] 
+ | Bool b         -> [PUSH (BOOL b)]
+ | Skip           -> [PUSH (SKIP)]
  | UnaryOp(op, e) -> (compile e) @ [UNARY op]
  | Op(e1, op, e2) -> (compile e1) @ (compile e2) @ [OPER op] 
  | Seq []         -> [] 
  | Seq [e]        -> compile e
  | Seq (e ::rest) -> (compile e) @ [POP] @ (compile (Seq rest))
+ | If(e1, e2, e3) -> (compile e1) @ [TEST(compile e2, compile e3)]
+ | While(e1, e2)  -> [WHILE(compile e1, compile e2)]
+ | Assign(l, e1)  -> (compile e1) @ [ASSIGN(l)]
+ | Deref(l)       -> [DEREF(l)]
+(*
+       | App of         expr * expr
+       | Lambda of      lambda
+       | LetRecFn of    var * lambda * expr
+       | Var of var
+*)
 
 (* The initial L1 state is the L1 state : all locations contain 0 *) 
 

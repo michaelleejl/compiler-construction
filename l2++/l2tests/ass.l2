@@ -1,0 +1,1 @@
+begin loc_1 := 3; loc_2 := 0; while (!loc_1 >= 1) do (begin loc_2 := !loc_2 + !loc_1; loc_1 := !loc_1 - 1 end); !loc_2 end

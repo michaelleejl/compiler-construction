@@ -7,6 +7,8 @@ type location = label * (address option)
 
 type value = 
   | INT of int 
+  | BOOL of bool
+  | SKIP
 
 and instruction = 
   | PUSH of value 
@@ -18,6 +20,8 @@ and instruction =
   | GOTO of location
   | LABEL of label 
   | HALT 
+  | ASSIGN of address
+  | DEREF of address
 
 and code = instruction list 
 

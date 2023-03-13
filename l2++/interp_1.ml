@@ -23,7 +23,7 @@ type value =
      | INT of int 
      | BOOL of bool
      | SKIP
-
+     | CLOSURE of closure
 and closure = var * expr * env 
 
 and continuation_action = 
@@ -159,6 +159,13 @@ let step = function
                                       | state -> complain ("step : malformed state"))
  | state -> complain ("step : malformed state = " ^ (string_of_state state) ^ "\n")
 
+
+ (*
+\       | App of         expr * expr
+       | Lambda of      lambda
+       | LetRecFn of    var * lambda * expr
+       | Var of var   
+ *)
  (*Driver drives the state*)
 let rec driver n state = 
   let _ = if Option.verbose 
