@@ -132,6 +132,9 @@ let new_address () = let a = !next_address in (next_address := a + 1; a)
 
 let do_assign a v = (heap.(a) <- v)
 
+let mk_fun (x, body) env = 
+  let fvars = Free_vars.free_vars([x], body)
+
 let step = function 
  (* EXAMINE --> EXAMINE *) 
  | EXAMINE(UnaryOp(op, e),              env, k) -> EXAMINE(e,  env, (UNARY op) :: k)
@@ -145,6 +148,8 @@ let step = function
  | EXAMINE(Integer n,         _, k) -> COMPUTE(k, INT n)
  | EXAMINE(Skip,              _, k) -> COMPUTE(k, SKIP)
  | EXAMINE(Bool b,            _, k) -> COMPUTE(k, BOOL b)
+ | EXAMINE(Lambda l,        env, k) -> COMPUTE(k, mk_fun l env)
+
  | EXAMINE(Deref(l),          _, k) -> COMPUTE(k, heap.(l))
  (* COMPUTE --> COMPUTE *) 
  | COMPUTE((UNARY op) :: k,    v) -> COMPUTE(k, (do_unary(op, v)))
