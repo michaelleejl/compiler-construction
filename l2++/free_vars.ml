@@ -20,7 +20,7 @@ let free_vars(bvars, exp) =
     | While (e1, e2)       -> aux bound (aux bound free e1) e2
     | Lambda (l)           -> lambda bound free l
     | LetRecFn ((x, l, e)) -> aux (x::bound) (lambda (x::bound) free l) e
-    | Var(x)               -> x::free  
+    | Var(x)               -> if (inlist x bound) || (inlist x free) then free else x::free  
     | _                    -> free 
     and lambda bound free (x, e) = aux (x::bound) free e 
    in aux bvars [] exp 
