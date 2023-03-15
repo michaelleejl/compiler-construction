@@ -81,6 +81,10 @@
 /Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o interp_0.cmo interp_0.ml # cached
 # Target: interp_1.ml.depends, tags: { extension:ml, file:interp_1.ml, ocaml, ocamldep, quiet }
 /Users/michaelleejl/.opam/4.14.0/bin/ocamldep.opt -modules interp_1.ml > interp_1.ml.depends # cached
+# Target: free_vars.mli.depends, tags: { extension:mli, file:free_vars.mli, ocaml, ocamldep, quiet }
+/Users/michaelleejl/.opam/4.14.0/bin/ocamldep.opt -modules free_vars.mli > free_vars.mli.depends # cached
+# Target: free_vars.cmi, tags: { byte, compile, extension:mli, file:free_vars.mli, interf, ocaml, quiet }
+/Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o free_vars.cmi free_vars.mli # cached
 # Target: interp_1.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:interp_1.cmo, file:interp_1.ml, implem, ocaml, quiet }
 /Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o interp_1.cmo interp_1.ml # cached
 # Target: interp_2.ml.depends, tags: { extension:ml, file:interp_2.ml, ocaml, ocamldep, quiet }
@@ -100,34 +104,29 @@
 # Target: interp_3.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:interp_3.cmo, file:interp_3.ml, implem, ocaml, quiet }
 /Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o interp_3.cmo interp_3.ml
 + /Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o interp_3.cmo interp_3.ml
-File "interp_3.ml", lines 88-98, characters 28-43:
-88 | ............................function 
-89 |  | UNARY op -> "UNARY " ^ (string_of_uop op) 
-90 |  | OPER op  -> "OPER " ^ (string_of_bop op) 
-91 |  | PUSH v   -> "PUSH " ^ (string_of_value v) 
-92 |  | POP      -> "POP"
-...
-95 |  | GOTO l   -> "GOTO " ^ (string_of_location l)
-96 |  | HALT     -> "HALT" 
-97 |  | ASSIGN l  -> "ASSIGN " ^ (string_of_int l) 
-98 |  | DEREF l  -> "DEREF " ^ (string_of_int l).
+File "interp_3.ml", lines 81-85, characters 26-34:
+81 | ..........................function 
+82 |      | INT n          -> string_of_int n 
+83 |      | BOOL b         -> string_of_bool b 
+84 |      | SKIP           -> "skip"
+85 |      | CLOSURE (a, e) -> "closure"
 Warning 8 [partial-match]: this pattern-matching is not exhaustive.
 Here is an example of a case that is not matched:
-LABEL _
-File "interp_3.ml", lines 184-224, characters 15-37:
-184 | ...............function 
-185 |   | Integer n      -> ([], [PUSH (INT n)]) 
-186 |   | Bool b         -> ([], [PUSH (BOOL b)])
-187 |   | Skip           -> ([], [PUSH (SKIP)])
-188 |   | UnaryOp(op, e) -> let (defs, c) = comp e in  (defs, c @ [UNARY op])
+REC_CLOSURE (_, _)
+File "interp_3.ml", lines 98-115, characters 28-27:
+ 98 | ............................function 
+ 99 |  | UNARY op -> "UNARY " ^ (string_of_uop op) 
+100 |  | OPER op  -> "OPER " ^ (string_of_bop op) 
+101 |  | PUSH v   -> "PUSH " ^ (string_of_value v) 
+102 |  | POP      -> "POP"
 ...
-221 |   | Assign(l, e1) -> let (defs1, c1) = comp e1 in 
-222 |                      (defs1, 
-223 |                      c1 @ [ASSIGN(l)])
-224 |   | Deref(l) ->      ([], [DEREF(l)])
+112 |  | APPLY -> "APPLY"
+113 |  | RETURN -> "RETURN"
+114 |  | BIND x -> "BIND "^ x
+115 |  | LOOKUP x -> "LOOKUP " ^x.
 Warning 8 [partial-match]: this pattern-matching is not exhaustive.
 Here is an example of a case that is not matched:
-(App (_, _)|Lambda _|LetRecFn (_, _, _)|Var _)
+MK_REC_CLOSURE (_, _)
 # Target: ast.ml.depends, tags: { extension:ml, file:ast.ml, ocaml, ocamldep, quiet }
 /Users/michaelleejl/.opam/4.14.0/bin/ocamldep.opt -modules ast.ml > ast.ml.depends # cached
 # Target: ast.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:ast.cmo, file:ast.ml, implem, ocaml, quiet }
@@ -152,6 +151,10 @@ Here is an example of a case that is not matched:
 /Users/michaelleejl/.opam/4.14.0/bin/ocamldep.opt -modules static.ml > static.ml.depends # cached
 # Target: static.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:static.cmo, file:static.ml, implem, ocaml, quiet }
 /Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o static.cmo static.ml # cached
+# Target: free_vars.ml.depends, tags: { extension:ml, file:free_vars.ml, ocaml, ocamldep, quiet }
+/Users/michaelleejl/.opam/4.14.0/bin/ocamldep.opt -modules free_vars.ml > free_vars.ml.depends # cached
+# Target: free_vars.cmo, tags: { byte, compile, extension:cmo, extension:ml, file:free_vars.cmo, file:free_vars.ml, implem, ocaml, quiet }
+/Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt -c -o free_vars.cmo free_vars.ml # cached
 # Target: l1.byte, tags: { byte, dont_link_with, extension:byte, file:l1.byte, link, ocaml, program, quiet }
-/Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt errors.cmo ast.cmo past.cmo parser.cmo lexer.cmo option.cmo past_to_ast.cmo pptree.cmo static.cmo front_end.cmo interp_0.cmo interp_1.cmo interp_2.cmo interp_3.cmo tests.cmo l1.cmo -o l1.byte
+/Users/michaelleejl/.opam/4.14.0/bin/ocamlc.opt errors.cmo ast.cmo past.cmo parser.cmo lexer.cmo option.cmo past_to_ast.cmo pptree.cmo static.cmo front_end.cmo interp_0.cmo free_vars.cmo interp_1.cmo interp_2.cmo interp_3.cmo tests.cmo l1.cmo -o l1.byte
 # Compilation successful.

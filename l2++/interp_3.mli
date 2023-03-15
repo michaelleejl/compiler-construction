@@ -9,12 +9,14 @@ type value =
   | INT of int 
   | BOOL of bool
   | SKIP
-
+  | CLOSURE of address * env 
+  | REC_CLOSURE of address * env 
 and instruction = 
   | PUSH of value 
   | UNARY of Ast.unary_oper 
   | OPER of Ast.oper 
   | POP 
+  | SWAP
   | TEST of location 
   | CASE of location
   | GOTO of location
@@ -22,6 +24,12 @@ and instruction =
   | HALT 
   | ASSIGN of address
   | DEREF of address
+  | MK_CLOSURE of location
+  | MK_REC_CLOSURE of Ast.var * location
+  | BIND of Ast.var
+  | APPLY
+  | RETURN
+  | LOOKUP of Ast.var
 
 and code = instruction list 
 

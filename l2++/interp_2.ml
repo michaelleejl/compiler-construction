@@ -28,6 +28,8 @@ type value =
      | INT of int 
      | BOOL of bool
      | SKIP
+     | CLOSURE of closure
+     | REC_CLOSURE of code
 
 and closure = code * env 
 
@@ -36,10 +38,16 @@ and instruction =
   | OPER of oper 
   | PUSH of value 
   | POP
+  | SWAP
   | TEST of code * code
   | WHILE of code * code
   | ASSIGN of address
   | DEREF of address
+  | MK_CLOSURE of code
+  | MK_REC_CLOSURE of var * code
+  | BIND of var
+  | APPLY
+  | LOOKUP of var
 
 and code = instruction list 
 
@@ -70,7 +78,8 @@ let rec string_of_value = function
      | INT n          -> string_of_int n 
      | BOOL b         -> string_of_bool b
      | SKIP           -> "skip"
-
+     | CLOSURE (c, e)      -> "closure"
+     | REC_CLOSURE _  -> "rec closure"
 and string_of_closure (c, env) = 
    "(" ^ (string_of_code c) ^ ", " ^ (string_of_env env) ^ ")"
 
@@ -82,8 +91,17 @@ and string_of_instruction = function
  | UNARY op     -> "UNARY " ^ (string_of_uop op) 
  | OPER op      -> "OPER " ^ (string_of_bop op) 
  | PUSH v       -> "PUSH " ^ (string_of_value v)  
- | POP          -> "POP"
-
+ | POP              -> "POP"
+ | SWAP             -> "SWAP"
+ | TEST (c1, c2) -> "TEST " ^ (string_of_code c1) ^ " " ^ (string_of_code c2) 
+ | WHILE (c1, c2) -> "WHILE " ^ (string_of_code c1) ^ " " ^ (string_of_code c2) 
+ | ASSIGN a       -> "ASSIGN " ^ (string_of_int a)
+ | DEREF a        -> "DEREF " ^ (string_of_int a)
+ | MK_CLOSURE c   -> "MK_CLOSURE " ^ (string_of_code c)
+ | MK_REC_CLOSURE (v, c) -> "MK_REC_CLOSURE " ^ v ^ " " ^ (string_of_code c)
+ | BIND var     -> "BIND " ^ var
+ | APPLY            -> "APPLY"
+ | LOOKUP var    -> "LOOKUP " ^ var
 and string_of_code c = string_of_list ";\n " string_of_instruction c 
 
 let string_of_env_or_value = function 
@@ -147,6 +165,16 @@ let do_oper = function
   | (GTEQ, INT m,   INT n)  -> BOOL (m >= n)
   | (op, _, _)  -> complain ("malformed binary operator: " ^ (string_of_oper op))
 
+
+let rec find env x = 
+  match env with
+  | [] -> complain ("variable " ^ x ^ " not instantiated")
+  | (var, valu)::env -> if x = var 
+                        then match valu with
+                        | REC_CLOSURE(c) -> CLOSURE(c, (x, REC_CLOSURE(c))::env)
+                        | _ -> valu
+                        else find env x
+
 (*
     val step : interp_state -> interp_state 
              = (code * env_value_stack * state) -> (code * env_value_stack * state) 
@@ -154,15 +182,25 @@ let do_oper = function
 let step = function 
 
 (* (code stack,         value/env stack, state) -> (code stack,  value/env stack, state) *)  
- | ((PUSH v) :: ds,                        evs, s) -> (ds, (V v) :: evs, s)
- | (POP :: ds,                        e :: evs, s) -> (ds, evs, s) 
- | ((UNARY op) :: ds,             (V v) :: evs, s) -> (ds, V(do_unary(op, v)) :: evs, s) 
- | ((OPER op) :: ds,   (V v2) :: (V v1) :: evs, s) -> (ds, V(do_oper(op, v1, v2)) :: evs, s)
- | ((TEST(t, _))::ds,    (V (BOOL(true)))::evs, s) -> (t @ ds, evs, s)
- | ((TEST(_, e))::ds,   (V (BOOL(false)))::evs, s) -> (e @ ds, evs, s)
- | ((WHILE(e1, e2))::ds,                   evs, s) -> (e1 @ [TEST((e2 @ [POP] @ [WHILE(e1, e2)]), [(PUSH SKIP)])] @ ds, evs, s)
- | ((ASSIGN(l))::ds,                (V v)::evs, s) -> let new_s = assign s l v in (ds, V(SKIP)::evs, new_s)
- | ((DEREF(l))::ds,                        evs, s) -> let v = deref s l in (ds, V(v)::evs, s)
+ | ((PUSH v) :: ds,                        evs, s)     -> (ds, (V v) :: evs, s)
+ | (SWAP::ds,                      e1::e2::evs, s)     -> (ds, e2::e1::evs, s)
+ | (POP :: ds,                        e :: evs, s)     -> (ds, evs, s) 
+ | ((UNARY op) :: ds,             (V v) :: evs, s)     -> (ds, V(do_unary(op, v)) :: evs, s) 
+ | ((OPER op) :: ds,   (V v2) :: (V v1) :: evs, s)     -> (ds, V(do_oper(op, v1, v2)) :: evs, s)
+ | ((TEST(t, _))::ds,    (V (BOOL(true)))::evs, s)     -> (t @ ds, evs, s)
+ | ((TEST(_, e))::ds,   (V (BOOL(false)))::evs, s)     -> (e @ ds, evs, s)
+ | ((WHILE(e1, e2))::ds,                   evs, s)     -> (e1 @ [TEST((e2 @ [POP] @ [WHILE(e1, e2)]), [(PUSH SKIP)])] @ ds, evs, s)
+ | ((ASSIGN(l))::ds,                (V v)::evs, s)     -> let new_s = assign s l v in (ds, V(SKIP)::evs, new_s)
+ | ((DEREF(l))::ds,                        evs, s)     -> let v = deref s l in (ds, V(v)::evs, s)
+ | (BIND(x)::ds,                    (V v)::evs, s)     -> (ds, (EV [(x, v)])::evs, s)
+ | ((MK_CLOSURE(c))::ds,                   evs, s)     -> let env = evs_to_env evs in
+                                                          (ds, (V(CLOSURE(c, env))::evs), s)
+ | (APPLY::ds,(V v)::(V(CLOSURE(c, env))::evs), s)     -> (c@ds, (V v)::(EV env)::evs, s)
+ | ((LOOKUP(x))::ds,                       evs, s)     -> let e = evs_to_env evs in
+                                                          let v = find e x in
+                                                          (ds, (V v)::evs, s)
+ | (MK_REC_CLOSURE(x, c)::ds,              evs, s)     -> let env = evs_to_env evs in
+                                                          (ds, (V(CLOSURE(c, (x, REC_CLOSURE(c))::env)))::evs, s)
  | state -> complain ("step : bad state = " ^ (string_of_interp_state state) ^ "\n")
 
 let rec driver n state = 
@@ -179,23 +217,24 @@ let rec driver n state =
    val compile : expr -> code 
 *) 
 let rec compile = function 
- | Integer n      -> [PUSH (INT n)] 
- | Bool b         -> [PUSH (BOOL b)]
- | Skip           -> [PUSH (SKIP)]
- | UnaryOp(op, e) -> (compile e) @ [UNARY op]
- | Op(e1, op, e2) -> (compile e1) @ (compile e2) @ [OPER op] 
- | Seq []         -> [] 
- | Seq [e]        -> compile e
- | Seq (e ::rest) -> (compile e) @ [POP] @ (compile (Seq rest))
- | If(e1, e2, e3) -> (compile e1) @ [TEST(compile e2, compile e3)]
- | While(e1, e2)  -> [WHILE(compile e1, compile e2)]
- | Assign(l, e1)  -> (compile e1) @ [ASSIGN(l)]
- | Deref(l)       -> [DEREF(l)]
+ | Integer n               -> [PUSH (INT n)] 
+ | Bool b                  -> [PUSH (BOOL b)]
+ | Skip                    -> [PUSH (SKIP)]
+ | UnaryOp(op, e)          -> (compile e) @ [UNARY op]
+ | Op(e1, op, e2)          -> (compile e1) @ (compile e2) @ [OPER op] 
+ | Seq []                  -> [] 
+ | Seq [e]                 -> compile e
+ | Seq (e ::rest)          -> (compile e) @ [POP] @ (compile (Seq rest))
+ | If(e1, e2, e3)          -> (compile e1) @ [TEST(compile e2, compile e3)]
+ | While(e1, e2)           -> [WHILE(compile e1, compile e2)]
+ | Assign(l, e1)           -> (compile e1) @ [ASSIGN(l)]
+ | Deref(l)                -> [DEREF(l)]
+ | Lambda(x, e)            -> [MK_CLOSURE(BIND x::(compile e))] (**)
+ | App(e1, e2)             -> (compile e1) @ (compile e2) @ [APPLY; SWAP; POP; SWAP; POP]
+ | Var(x)                  -> [LOOKUP(x)]
+ | LetRecFn (x, (y, b), e) -> MK_REC_CLOSURE(x, (BIND y::(compile b)))::(BIND x)::(compile e) @ [SWAP; POP]
 (*
-       | App of         expr * expr
-       | Lambda of      lambda
-       | LetRecFn of    var * lambda * expr
-       | Var of var
+       ERRONEOUS:  | LetRecFn (x, (y, b), e) -> MK_REC_CLOSURE(x, MK_CLOSURE(BIND y::(compile b)))::(BIND x)::(compile e) @ [SWAP; POP]
 *)
 
 (* The initial L1 state is the L1 state : all locations contain 0 *) 

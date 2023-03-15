@@ -30,12 +30,15 @@ type value =
   | INT of int 
   | BOOL of bool
   | SKIP
+  | CLOSURE of address * env
+  | REC_CLOSURE of address * env
 
 and instruction = 
   | PUSH of value 
   | UNARY of unary_oper 
   | OPER of oper 
-  | POP   
+  | POP
+  | SWAP   
   | TEST of location 
   | CASE of location
   | GOTO of location
@@ -43,6 +46,12 @@ and instruction =
   | HALT 
   | ASSIGN of address
   | DEREF of address
+  | MK_CLOSURE of location
+  | MK_REC_CLOSURE of var * location
+  | BIND of var
+  | APPLY
+  | RETURN
+  | LOOKUP of var
 
 and code = instruction list 
 
@@ -73,6 +82,7 @@ let rec string_of_value = function
      | INT n          -> string_of_int n 
      | BOOL b         -> string_of_bool b 
      | SKIP           -> "skip"
+     | CLOSURE (a, e) -> "closure"
 
 and string_of_closure (loc, env) = 
    "(" ^ (string_of_location loc) ^ ", " ^ (string_of_env env) ^ ")"
@@ -90,12 +100,19 @@ and string_of_instruction = function
  | OPER op  -> "OPER " ^ (string_of_bop op) 
  | PUSH v   -> "PUSH " ^ (string_of_value v) 
  | POP      -> "POP"
+ | SWAP -> "SWAP"
  | TEST l   -> "TEST " ^ (string_of_location l)
  | CASE l   -> "CASE " ^ (string_of_location l)
  | GOTO l   -> "GOTO " ^ (string_of_location l)
  | HALT     -> "HALT" 
  | ASSIGN l  -> "ASSIGN " ^ (string_of_int l) 
  | DEREF l  -> "DEREF " ^ (string_of_int l) 
+ | LABEL l -> "LABEL " ^ l
+ | MK_CLOSURE l -> "MK_CLOSURE " ^ (string_of_location l)
+ | APPLY -> "APPLY"
+ | RETURN -> "RETURN"
+ | BIND x -> "BIND "^ x
+ | LOOKUP x -> "LOOKUP " ^x 
 
 and string_of_code c = string_of_list "\n " string_of_instruction c 
 
@@ -157,13 +174,36 @@ let do_oper = function
   | (GTEQ, INT m,   INT n)  -> BOOL (m >= n)
   | (op, _, _)  -> complain ("malformed binary operator: " ^ (string_of_oper op))
 
+ let rec evs_to_env = function 
+  | [] -> []
+  | (V _) :: rest -> evs_to_env rest 
+  | (RA _) :: rest -> evs_to_env rest 
+  | (EV env) :: rest -> env @ (evs_to_env rest) 
+
+
+let rec search stack x =
+  match stack with 
+    | [] -> complain ("variable " ^ x ^ " is not defined")
+    | (EV env)::evs -> let rec lookup e y = 
+                        match e with 
+                        | [] -> search evs x
+                        | (var, v)::e -> if var = y then 
+                                         match v with 
+                                          | REC_CLOSURE(i, _) -> CLOSURE(i, (x, REC_CLOSURE(i, []))::e)
+                                          | _ -> v
+                                         else lookup e y 
+                        in 
+                       lookup env x 
+    | _::evs -> search evs x  
 
 let step (cp, evs) = 
  match (get_instruction cp, evs) with 
  | (PUSH v,                            evs) -> (cp + 1, (V v) :: evs)
  | (POP,                          s :: evs) -> (cp + 1, evs) 
+ | (SWAP,                      e1::e2::evs) -> (cp+1, e2::e1::evs)
  | (UNARY op,                 (V v) :: evs) -> (cp + 1, V(do_unary(op, v)) :: evs) 
  | (OPER op,       (V v2) :: (V v1) :: evs) -> (cp + 1, V(do_oper(op, v1, v2)) :: evs)
+ | (BIND x,                     (V v)::evs) -> (cp+1, EV([(x, v)])::evs)
 (* new intructions *) 
  | (LABEL l,                           evs) -> (cp + 1, evs) 
  | (HALT,                              evs) -> (cp, evs) 
@@ -172,6 +212,11 @@ let step (cp, evs) =
  | (TEST (_, Some i), (V(BOOL(false)))::evs) -> (i, evs)
  | (ASSIGN(l),                   (V v)::evs) -> heap.(l) <- v; (cp+1, (V(SKIP))::evs)
  | (DEREF (l),                          evs) -> let v = heap.(l) in (cp+1, (V v)::evs)
+ | (MK_CLOSURE(_, Some i),              evs) -> let env = evs_to_env evs in (cp+1, V(CLOSURE(i, env))::evs) 
+ | (MK_REC_CLOSURE(x ,(_, Some i)),     evs) -> let env = evs_to_env evs in (cp+1, V(CLOSURE(i, (x, REC_CLOSURE(i, []))::env))::evs)
+ | (APPLY, (V v)::(V(CLOSURE(i, env)))::evs) -> (i, (V v)::(EV env)::(RA (cp+1))::evs)
+ | (RETURN,                     (RA a)::evs) -> (a, evs)
+ | (LOOKUP(x),                          evs) -> let v = search evs x in (cp+1, (V v)::evs)
  | _ -> complain ("step : bad state = " ^ (string_of_state (cp, evs)) ^ "\n")
 
 (* COMPILE *) 
@@ -222,12 +267,23 @@ let rec comp = function
                      (defs1, 
                      c1 @ [ASSIGN(l)])
   | Deref(l) ->      ([], [DEREF(l)])
+  | Lambda((x, e)) -> let (defs1, c1) = comp e  in
+                      let lambda_label = new_label () in 
+                      (((LABEL lambda_label)::(BIND x)::c1 @ [SWAP; POP; SWAP; POP; SWAP; RETURN]) @ defs1, 
+                      [MK_CLOSURE(lambda_label, None)])
+  | App (e1, e2)   -> let (defs1, c1) = comp e1 in 
+                      let (defs2, c2) = comp e2 in 
+                      (defs1 @ defs2, c1 @ c2 @ [APPLY])
+  | Var x          -> ([], [LOOKUP x])
+  | LetRecFn (x, (y, body), e) -> 
+                          let (defs1, c1) = comp e in
+                          let (defs2, c2) = comp body in
+                          let f = new_label() in
+                          ((LABEL f)::(BIND y)::c2 @ [SWAP; POP; SWAP; POP; SWAP; RETURN] @ defs1 @ defs2, 
+                          ((MK_REC_CLOSURE(x, (f, None)))::(BIND(x))::c1) @ [SWAP; POP])
+
 (*                   
-       | App of         expr * expr
-       | While of       expr * expr
-       | Lambda of      lambda
        | LetRecFn of    var * lambda * expr
-       | Var of var
 *)
 let compile e = 
     let (defs, c) = comp e in 
@@ -261,6 +317,8 @@ let rec find lab = function
      | GOTO (lab, _) -> GOTO(lab, Some(find lab m))
      | TEST (lab, _) -> TEST(lab, Some(find lab m))
      | CASE (lab, _) -> CASE(lab, Some(find lab m))
+     | MK_CLOSURE(lab, _) -> MK_CLOSURE(lab, Some(find lab m))
+     | MK_REC_CLOSURE(x, (lab, _)) -> MK_REC_CLOSURE(x, (lab, Some(find lab m)))
      | inst -> inst 
    (* find array index for each label *) 
    in let listing_to_label_map l = 

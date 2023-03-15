@@ -19,11 +19,13 @@ let complain = Errors.complain
 
 type address = int 
 
-type value = 
+and value = 
      | INT of int 
      | BOOL of bool
      | SKIP
      | CLOSURE of closure
+     | REC_CLOSURE of closure
+
 and closure = var * expr * env 
 
 and continuation_action = 
@@ -33,6 +35,9 @@ and continuation_action =
   | TAIL of Ast.expr list * env
   | IF of Ast.expr * Ast.expr * env
   | ASSIGN of Ast.loc
+  | ARG of Ast.expr * env
+  | APPLY of closure
+
 and continuation = continuation_action  list
 
 and binding = var * value
@@ -50,7 +55,6 @@ and env = binding list
 type state = 
    | EXAMINE of expr * env * continuation 
    | COMPUTE of continuation * value 
-
 
 (* update : (env * binding) -> env *) 
 let update(env, (x, v)) = (x, v) :: env 
@@ -132,6 +136,44 @@ let new_address () = let a = !next_address in (next_address := a + 1; a)
 
 let do_assign a v = (heap.(a) <- v)
 
+let make_fun (x, body) env =
+  let fvars = Free_vars.free_vars([x], body) in (*Compute ONLY the free variables in the fn body*)
+  let reduced_env = filter_env fvars env in (*reduce the environment to store only the bindings for these free variables*)
+  CLOSURE(x, body, reduced_env)
+
+let make_rec_fun x (y, body) env = 
+  let fvars = Free_vars.free_vars([x; y], body) in
+  let reduced_env = filter_env fvars env in 
+  REC_CLOSURE(x, Lambda(y, body), (x, REC_CLOSURE(x, Lambda(y, body), []))::reduced_env)
+  (*Christ. Ok, first of all, we do exactly the same thing as make_fun. HOWEVER, the function body, body
+    might contain recursive references to itself - for example, x = (fn y => (x (y-1)) + (x (y-2)))
+    so after reducing the environment, we need to extend it with the binding for x.
+    That is, we want to cons (x, value) to the reduced environment 
+    Step 2: What does x bind to? What should value be? 
+    x binds to exactly the thing we're trying to return in the make_rec_fun function. 
+    Step 3: How do we express that? Well it should be a recursive closure, REC_CLOSURE, that keeps track
+    of its variable name, x, the function it binds to, (y, body), and the environment you need to evaluate
+    (y, body), which turns out to be what we're computing in step 3. 
+    Step 4: Avoiding infinity - clearly, this is an infinite term. However, what we can do is say that we ignore
+    we will only ever try to lookup the binding for x or some variable in reduced_env. If we look up the binding for x,
+    to perform the computation, we might need a binding for x or for some variable in reduced_env. So we actually
+    already have all the information we need, we just need to reconstruct it on lookup. 
+  *)
+
+let rec find env x = 
+  match env with
+  | [] -> complain ("variable " ^ x ^ " not instantiated")
+  | (var, valu)::env -> if x = var 
+                        then match valu with 
+                             | REC_CLOSURE(x, Lambda(y, body), _) ->
+                               CLOSURE(y, body, (x, REC_CLOSURE(x, Lambda(y, body), env))::env)
+                        (*if you see x v, and you look up x and x is a recursive function*)
+                        (*of the form x = fn y => body, where body contains x*) 
+                        (*then i want you to return a regular function that takes in y*)
+                        (*and evaluates the body, but retaining the information that x is a recursive fn*)  
+                             | _ -> valu 
+                        else find env x
+
 let step = function 
  (* EXAMINE --> EXAMINE *) 
  | EXAMINE(UnaryOp(op, e),              env, k) -> EXAMINE(e,  env, (UNARY op) :: k)
@@ -141,15 +183,22 @@ let step = function
  | EXAMINE(If (e1, e2, e3),             env, k) -> EXAMINE(e1, env, IF (e2, e3, env) :: k)
  | EXAMINE(While (e1, e2),              env, k) -> EXAMINE(e1, env, IF(Seq([e2; While(e1, e2)]), Skip, env)::k)
  | EXAMINE(Assign(l, e),                env, k) -> EXAMINE(e, env, ASSIGN(l)::k)
+ | EXAMINE(App(e1, e2),                 env, k) -> EXAMINE(e1, env, ARG(e2, env)::k) (*To evaluate e1 e2, first reduce e1 to a value, then [continuation] reduce e2 to a value*)
+ | EXAMINE(LetRecFn(x, l, e),           env, k) -> EXAMINE(e, (x, (make_rec_fun x l env))::env, k)
+
  (* EXAMINE --> COMPUTE *) 
- | EXAMINE(Integer n,         _, k) -> COMPUTE(k, INT n)
- | EXAMINE(Skip,              _, k) -> COMPUTE(k, SKIP)
- | EXAMINE(Bool b,            _, k) -> COMPUTE(k, BOOL b)
- | EXAMINE(Deref(l),          _, k) -> COMPUTE(k, heap.(l))
+ | EXAMINE(Integer n,           _, k) -> COMPUTE(k, INT n)
+ | EXAMINE(Skip,                _, k) -> COMPUTE(k, SKIP)
+ | EXAMINE(Bool b,              _, k) -> COMPUTE(k, BOOL b)
+ | EXAMINE(Lambda l,          env, k) -> COMPUTE(k, make_fun l env)
+ | EXAMINE(Deref(l),            _, k) -> COMPUTE(k, heap.(l))
+ | EXAMINE(Var(x),            env, k) -> COMPUTE(k, find env x)
+
  (* COMPUTE --> COMPUTE *) 
  | COMPUTE((UNARY op) :: k,    v) -> COMPUTE(k, (do_unary(op, v)))
  | COMPUTE(OPER(op, v1) :: k, v2) -> COMPUTE(k, do_oper(op, v1, v2))
  | COMPUTE(ASSIGN(l):: k,      v) -> let _ = do_assign l v in COMPUTE(k, SKIP)
+
  (* COMPUTE --> EXAMINE *) 
  | COMPUTE(OPER_FST (e2, env, op) :: k,         v1)  -> EXAMINE(e2, env, OPER (op, v1) :: k)
  | COMPUTE((TAIL (el, env)) :: k,     _)  ->  EXAMINE(Seq el, env, k) 
@@ -157,15 +206,11 @@ let step = function
                                       | BOOL(true) -> EXAMINE(e2, env, k)
                                       | BOOL(false) -> EXAMINE(e3, env, k)
                                       | state -> complain ("step : malformed state"))
+ | COMPUTE(APPLY(x, body, env)::k,    v) -> EXAMINE(body, update (env, (x, v)), k)                                     
+ | COMPUTE(ARG(e, env)::k, CLOSURE(x, body, cenv)) -> EXAMINE(e, env, APPLY(x, body, cenv)::k) (* e1 e2. Having reduced e1 to a value f, reduce e2 to a value v, then continue by applying f to v - which is at the top of the stack*)
+ (*Invariant - this will always be a closure, even if it's recursive, since the recursion will be in the closure environment cenv*)
  | state -> complain ("step : malformed state = " ^ (string_of_state state) ^ "\n")
 
-
- (*
-\       | App of         expr * expr
-       | Lambda of      lambda
-       | LetRecFn of    var * lambda * expr
-       | Var of var   
- *)
  (*Driver drives the state*)
 let rec driver n state = 
   let _ = if Option.verbose 
